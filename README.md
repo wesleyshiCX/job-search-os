@@ -1,6 +1,6 @@
-# README.md
+Here's the cleaned-up README — fixed all the escaped backticks, broken code fences, Copy artifacts, and general markdown that'd render wrong on GitHub:
 
-`# Job Search OS
+# Job Search OS
 
 An AI-powered job search workspace for people in active job hunts — especially
 folks who've been laid off. Upload your resume once, auto-match against every
@@ -71,88 +71,72 @@ still need to set up the Supabase database, storage, and Edge Function — see s
 
 ### 1. Clone + install
 
-```bash
 git clone https://github.com/wesleyshiCX/job-search-os.git
 cd job-search-os
-npm install`
+npm install
 
-### **2. Configure environment**
+### 2. Configure environment
 
-bash
-
-Copy
-
-`cp .env.example .env.local`
+cp .env.example .env.local
 
 Then fill in `.env.local`:
 
-Plain Text
+Supabase → Project Settings → API
 
-Copy
-
-# Supabase → Project Settings → API
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
-# Server-only — DO NOT prefix with NEXT_PUBLIC_
+Server-only — DO NOT prefix with NEXT_PUBLIC_
+
 SUPABASE_SERVICE_ROLE_KEY=
 
-# Groq → console.groq.com → API Keys
+Groq → console.groq.com → API Keys
+
 GROQ_API_KEY=
 
 ⚠️ Important: `SUPABASE_SERVICE_ROLE_KEY` must never have the `NEXT_PUBLIC_` prefix. It bypasses RLS and is server-side only.
 
-### **3. Set up the database**
+### 3. Set up the database
 
 Run the migration SQL in Supabase Dashboard → SQL Editor. The full schema is in `supabase/migrations/`.
 
 Alternatively:
 
-bash
-
-Copy
-
-`npx supabase login
-npx supabase link --project-ref <your-project-ref>
-npx supabase db push`
+npx supabase login
+npx supabase link --project-ref
+npx supabase db push
 
 Note: If `db push` fails on the storage bucket insert, create the `resumes` bucket manually in Supabase Dashboard → Storage and run the table SQL separately.
 
-### **4. Create the resumes storage bucket**
+### 4. Create the resumes storage bucket
 
 1. Go to Supabase Dashboard → Storage
-2. Click “New bucket”
+2. Click "New bucket"
 3. Name: `resumes`, Public: No
 4. Add RLS policies for INSERT, SELECT, DELETE targeting `(storage.foldername(name))[1] = auth.uid()::text`
 
-### **5. Deploy the embeddings function**
+### 5. Deploy the embeddings function
 
-bash
+npx supabase functions deploy embed
 
-Copy
+This uses Supabase's built-in gte-small model — no extra API key required.
 
-`npx supabase functions deploy embed`
-
-This uses Supabase’s built-in gte-small model — no extra API key required.
-
-### **6. Configure auth redirect**
+### 6. Configure auth redirect
 
 In Supabase: Authentication → URL Configuration, add:
 
 - `http://localhost:3000/**` (local development)
 - your production URL (after deploying to Vercel)
 
-### **7. Run**
+### 7. Run
 
-bash
-
-Copy
-
-`npm run dev`
+npm run dev
 
 Open http://localhost:3000.
 
-# **🗺️ How it works**
+---
+
+## 🗺️ How it works
 
 1. **Sign in** via magic link (no password).
 2. **Upload your resume** on the Dashboard — parsed and embedded automatically.
@@ -167,99 +151,101 @@ Open http://localhost:3000.
 11. **Track analytics** — `/dashboard` shows funnel conversion, time-in-stage, resume performance, and weekly activity.
 12. **Track usage** — `/usage` shows token counts and estimated cost per feature.
 
+---
+
 ## 📂 Project structure
 
-```
 job-search-os/
-├── middleware.ts                         # refreshes Supabase session on every request
-├── next.config.ts                        # serverExternalPackages for pdfjs-dist
-├── .env.example                          # env variable template (no real secrets)
+├── middleware.ts # refreshes Supabase session on every request
+├── next.config.ts # serverExternalPackages for pdfjs-dist
+├── .env.example # env variable template (no real secrets)
 ├── supabase/
-│   ├── migrations/                       # all SQL — tables, RLS, triggers, functions
-│   └── functions/
-│       └── embed/
-│           └── index.ts                  # gte-small Edge Function — expects { text }, returns { embedding }
+│ ├── migrations/ # all SQL — tables, RLS, triggers, functions
+│ └── functions/
+│ └── embed/
+│ └── index.ts # gte-small Edge Function — expects { text }, returns { embedding }
 ├── lib/
-│   ├── supabase/
-│   │   ├── client.ts                     # browser Supabase client
-│   │   └── server.ts                     # async server Supabase client (must await createClient())
-│   └── ai/
-│       ├── parse-resume.ts               # PDF (pdfjs-dist) + DOCX (mammoth) + TXT parsing, server-side only
-│       ├── jd-fetch.ts                   # URL → JD text: Greenhouse / Lever / Workable + generic fallback
-│       ├── prompts.ts                    # all LLM prompt builders: analysis, debrief, outreach
-│       ├── groq.ts                       # Groq client, model name, token pricing constants
-│       ├── schemas.ts                    # Zod schemas: Analysis, DebriefInsights, OutreachContent
-│       └── embeddings.ts                 # helpers for generating and storing resume embeddings
+│ ├── supabase/
+│ │ ├── client.ts # browser Supabase client
+│ │ └── server.ts # async server Supabase client (must await createClient())
+│ └── ai/
+│ ├── parse-resume.ts # PDF (pdfjs-dist) + DOCX (mammoth) + TXT parsing, server-side only
+│ ├── jd-fetch.ts # URL → JD text: Greenhouse / Lever / Workable + generic fallback
+│ ├── prompts.ts # all LLM prompt builders: analysis, debrief, outreach
+│ ├── groq.ts # Groq client, model name, token pricing constants
+│ ├── schemas.ts # Zod schemas: Analysis, DebriefInsights, OutreachContent
+│ └── embeddings.ts # helpers for generating and storing resume embeddings
 ├── components/
-│   ├── ui/                               # shadcn/ui primitives (button, input, badge, sheet, etc.)
-│   ├── kanban-board.tsx                  # dnd-kit drag-and-drop pipeline board
-│   ├── kanban-wrapper.tsx                # dynamic(() => KanbanBoard, { ssr: false }) — fixes hydration
-│   ├── morning-briefing.tsx              # daily briefing: overdue, upcoming, stale, funnel stats
-│   ├── follow-up-queue.tsx               # dashboard widget: all follow-ups sorted by urgency
-│   ├── analytics-panel.tsx               # collapsible wrapper for funnel analytics
-│   ├── funnel-analytics.tsx              # recharts: funnel, resume performance, weekly volume
-│   ├── batch-jd-analyzer.tsx             # paste up to 3 JDs, analyze + score in parallel
-│   ├── post-interview-debrief.tsx        # debrief form + AI coaching insights display
-│   ├── outreach-generator.tsx            # cover letters, recruiter / HM outreach, thank-yous
-│   ├── application-detail-client.tsx     # client component: follow-up picker, contact linking
-│   ├── follow-up-picker.tsx              # 3 / 5 / 7 / 14 day presets + custom date + clear
-│   ├── resume-upload.tsx                 # upload PDF/DOCX/TXT, manage versions, set active
-│   ├── contact-list.tsx                  # contact CRUD with warmth badges and interaction log
-│   ├── interaction-log.tsx               # timestamped interaction timeline per contact
-│   ├── application-detail.tsx            # Sheet side panel (legacy — superseded by /applications/[id])
-│   ├── mock-chat.tsx                     # streaming mock interview (raw fetch + ReadableStream)
-│   └── usage-dashboard.tsx               # token counts and cost breakdown per feature
+│ ├── ui/ # shadcn/ui primitives (button, input, badge, sheet, etc.)
+│ ├── kanban-board.tsx # dnd-kit drag-and-drop pipeline board
+│ ├── kanban-wrapper.tsx # dynamic(() => KanbanBoard, { ssr: false }) — fixes hydration
+│ ├── morning-briefing.tsx # daily briefing: overdue, upcoming, stale, funnel stats
+│ ├── follow-up-queue.tsx # dashboard widget: all follow-ups sorted by urgency
+│ ├── analytics-panel.tsx # collapsible wrapper for funnel analytics
+│ ├── funnel-analytics.tsx # recharts: funnel, resume performance, weekly volume
+│ ├── batch-jd-analyzer.tsx # paste up to 3 JDs, analyze + score in parallel
+│ ├── post-interview-debrief.tsx # debrief form + AI coaching insights display
+│ ├── outreach-generator.tsx # cover letters, recruiter / HM outreach, thank-yous
+│ ├── application-detail-client.tsx # client component: follow-up picker, contact linking
+│ ├── follow-up-picker.tsx # 3 / 5 / 7 / 14 day presets + custom date + clear
+│ ├── resume-upload.tsx # upload PDF/DOCX/TXT, manage versions, set active
+│ ├── contact-list.tsx # contact CRUD with warmth badges and interaction log
+│ ├── interaction-log.tsx # timestamped interaction timeline per contact
+│ ├── application-detail.tsx # Sheet side panel (legacy — superseded by /applications/[id])
+│ ├── mock-chat.tsx # streaming mock interview (raw fetch + ReadableStream)
+│ └── usage-dashboard.tsx # token counts and cost breakdown per feature
 ├── app/
-│   ├── page.tsx                          # landing page
-│   ├── layout.tsx                        # root layout with dark mode + Toaster
-│   ├── (auth)/
-│   │   └── login/
-│   │       └── page.tsx                  # magic-link sign in
-│   ├── auth/
-│   │   └── callback/
-│   │       └── route.ts                  # Supabase OAuth code exchange
-│   ├── (app)/                            # auth-guarded route group
-│   │   ├── layout.tsx                    # checks session, redirects to /login if missing
-│   │   ├── dashboard/
-│   │   │   └── page.tsx                  # kanban + briefing + follow-up queue + analytics + resume + contacts
-│   │   ├── analyze/
-│   │   │   └── page.tsx                  # single JD analysis + batch mode toggle
-│   │   ├── applications/
-│   │   │   └── [id]/
-│   │   │       └── page.tsx              # full application detail: follow-up, contacts, debrief, outreach
-│   │   ├── prep/
-│   │   │   └── [appId]/
-│   │   │       └── page.tsx              # mock interview page
-│   │   └── usage/
-│   │       └── page.tsx                  # LLM cost telemetry dashboard
-│   ├── actions/
-│   │   ├── applications.ts               # createApplication, updateStatus, setNextAction
-│   │   ├── resume-actions.ts             # uploadResume, getResumes, getActiveResume, setActiveResume, deleteResume
-│   │   ├── contact-actions.ts            # getContacts, createContact, getApplicationContacts, linkContactToApplication
-│   │   ├── debrief-actions.ts            # getDebriefs, deleteDebrief
-│   │   └── outreach-actions.ts           # getOutreach, deleteOutreach
-│   └── api/
-│       ├── analyze/
-│       │   └── route.ts                  # POST: JD analysis via Groq, returns structured JSON
-│       ├── match/
-│       │   └── route.ts                  # POST: resume ↔ JD cosine similarity via embed Edge Function
-│       ├── mock/
-│       │   └── route.ts                  # POST: streaming mock interview (ReadableStream)
-│       ├── briefing/
-│       │   └── route.ts                  # GET: overdue + upcoming follow-ups, stale apps, funnel stats
-│       ├── analytics/
-│       │   └── route.ts                  # GET: funnel conversion, time-in-stage, resume performance
-│       ├── jd-fetch/
-│       │   └── route.ts                  # POST: URL → extracted JD text
-│       ├── debrief/
-│       │   └── route.ts                  # POST: save debrief + generate AI insights via Groq
-│       └── outreach/
-│           └── route.ts                  # POST: generate outreach content via Groq, save to DB
-```
+│ ├── page.tsx # landing page
+│ ├── layout.tsx # root layout with dark mode + Toaster
+│ ├── (auth)/
+│ │ └── login/
+│ │ └── page.tsx # magic-link sign in
+│ ├── auth/
+│ │ └── callback/
+│ │ └── route.ts # Supabase OAuth code exchange
+│ ├── (app)/ # auth-guarded route group
+│ │ ├── layout.tsx # checks session, redirects to /login if missing
+│ │ ├── dashboard/
+│ │ │ └── page.tsx # kanban + briefing + follow-up queue + analytics + resume + contacts
+│ │ ├── analyze/
+│ │ │ └── page.tsx # single JD analysis + batch mode toggle
+│ │ ├── applications/
+│ │ │ └── [id]/
+│ │ │ └── page.tsx # full application detail: follow-up, contacts, debrief, outreach
+│ │ ├── prep/
+│ │ │ └── [appId]/
+│ │ │ └── page.tsx # mock interview page
+│ │ └── usage/
+│ │ └── page.tsx # LLM cost telemetry dashboard
+│ ├── actions/
+│ │ ├── applications.ts # createApplication, updateStatus, setNextAction
+│ │ ├── resume-actions.ts # uploadResume, getResumes, getActiveResume, setActiveResume, deleteResume
+│ │ ├── contact-actions.ts # getContacts, createContact, getApplicationContacts, linkContactToApplication
+│ │ ├── debrief-actions.ts # getDebriefs, deleteDebrief
+│ │ └── outreach-actions.ts # getOutreach, deleteOutreach
+│ └── api/
+│ ├── analyze/
+│ │ └── route.ts # POST: JD analysis via Groq, returns structured JSON
+│ ├── match/
+│ │ └── route.ts # POST: resume ↔ JD cosine similarity via embed Edge Function
+│ ├── mock/
+│ │ └── route.ts # POST: streaming mock interview (ReadableStream)
+│ ├── briefing/
+│ │ └── route.ts # GET: overdue + upcoming follow-ups, stale apps, funnel stats
+│ ├── analytics/
+│ │ └── route.ts # GET: funnel conversion, time-in-stage, resume performance
+│ ├── jd-fetch/
+│ │ └── route.ts # POST: URL → extracted JD text
+│ ├── debrief/
+│ │ └── route.ts # POST: save debrief + generate AI insights via Groq
+│ └── outreach/
+│ └── route.ts # POST: generate outreach content via Groq, save to DB
 
-### **RLS**
+### RLS
 
 All tables have row-level security. Users can only see/modify their own data. The `resumes` storage bucket uses folder-level policies keyed to `auth.uid()`.
+
+---
 
 ## 🗄️ Database schema
 
@@ -329,13 +315,17 @@ All tables have row-level security. Users can only see/modify their own data. Th
 | `set_updated_at` | Trigger | Fires `set_updated_at_fn()` before every UPDATE on `applications` |
 | `set_active_resume()` | Function | Security-definer function that clears `is_active` on all other resumes before setting the new one active |
 
-# **🔒 Security**
+---
+
+## 🔒 Security
 
 - Real keys live only in `.env.local` (gitignored) and Vercel project settings
 - `SUPABASE_SERVICE_ROLE_KEY` is server-only — never prefixed with `NEXT_PUBLIC_`
 - `resumes` storage bucket is private with RLS
 - Resume parsing happens server-side — files never reach the browser
 - The Supabase CLI token is stored globally (`~/.supabase/`), never in the repo
+
+---
 
 ## 🔧 Troubleshooting
 
@@ -346,7 +336,7 @@ All tables have row-level security. Users can only see/modify their own data. Th
 | **Bucket not found (resume upload)** | Create the `resumes` bucket manually in Supabase Dashboard → Storage. Set to Private. |
 | **Could not find table (resumes, debriefs, outreach, etc.)** | Run the migration SQL in Supabase SQL Editor. See `supabase/migrations/`. |
 | **Hydration mismatch (aria-describedby errors)** | Use `KanbanWrapper` not `KanbanBoard` directly — it uses `dynamic(() => ..., { ssr: false })` to avoid dnd-kit SSR issues |
-| **Invalid path on auth / magic link** | `NEXT_PUBLIC_SUPABASE_URL` must be the base URL only, e.g. `https://<project-id>.supabase.co`. Do not include `/rest/v1/`. |
+| **Invalid path on auth / magic link** | `NEXT_PUBLIC_SUPABASE_URL` must be the base URL only, e.g. `https://.supabase.co`. Do not include `/rest/v1/`. |
 | **Nothing happens on mock interview send** | Deploy the embed Edge Function: `npx supabase functions deploy embed`. Check your `GROQ_API_KEY` is valid. |
 | **Match scores show "—"** | Deploy the embed Edge Function: `npx supabase functions deploy embed`. Check server logs for `[match]` entries. Requires an active resume with a valid embedding. |
 | **JD URL fetch returns empty or fails** | Works with Greenhouse, Lever, and Workable. Does NOT work with LinkedIn, Indeed, Glassdoor, or internal Workday portals. Paste the JD text directly instead. |
@@ -375,10 +365,13 @@ All tables have row-level security. Users can only see/modify their own data. Th
 | P6 | Chrome extension for one-click JD capture from any job board | 🔲 Planned |
 | P7 | Email integration — auto-detect replies, update application status automatically | 🔲 Planned |
 
-# **🤝 Contributing**
+---
 
-PRs welcome — especially from folks who’ve used this in their own search and have ideas to improve it. Open an issue first for anything substantial.
+## 🤝 Contributing
 
-# **📄 License**
+PRs welcome — especially from folks who've used this in their own search and have ideas to improve it. Open an issue first for anything substantial.
+
+## 📄 License
 
 MIT
+
