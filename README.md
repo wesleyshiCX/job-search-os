@@ -155,91 +155,93 @@ Open http://localhost:3000.
 
 ## 📂 Project structure
 
+```text
 job-search-os/
-├── middleware.ts # refreshes Supabase session on every request
-├── next.config.ts # serverExternalPackages for pdfjs-dist
-├── .env.example # env variable template (no real secrets)
+├── middleware.ts                             # refreshes Supabase session on every request
+├── next.config.ts                            # serverExternalPackages for pdfjs-dist
+├── .env.example                              # env variable template (no real secrets)
 ├── supabase/
-│ ├── migrations/ # all SQL — tables, RLS, triggers, functions
-│ └── functions/
-│ └── embed/
-│ └── index.ts # gte-small Edge Function — expects { text }, returns { embedding }
+│   ├── migrations/                           # all SQL — tables, RLS, triggers, functions
+│   └── functions/
+│       └── embed/
+│           └── index.ts                      # gte-small Edge Function — { text } → { embedding }
 ├── lib/
-│ ├── supabase/
-│ │ ├── client.ts # browser Supabase client
-│ │ └── server.ts # async server Supabase client (must await createClient())
-│ └── ai/
-│ ├── parse-resume.ts # PDF (pdfjs-dist) + DOCX (mammoth) + TXT parsing, server-side only
-│ ├── jd-fetch.ts # URL → JD text: Greenhouse / Lever / Workable + generic fallback
-│ ├── prompts.ts # all LLM prompt builders: analysis, debrief, outreach
-│ ├── groq.ts # Groq client, model name, token pricing constants
-│ ├── schemas.ts # Zod schemas: Analysis, DebriefInsights, OutreachContent
-│ └── embeddings.ts # helpers for generating and storing resume embeddings
+│   ├── supabase/
+│   │   ├── client.ts                         # browser Supabase client
+│   │   └── server.ts                         # async server Supabase client
+│   └── ai/
+│       ├── parse-resume.ts                   # PDF + DOCX + TXT parsing (server-side)
+│       ├── jd-fetch.ts                       # URL → JD text: Greenhouse/Lever/Workable
+│       ├── prompts.ts                        # LLM prompt builders
+│       ├── groq.ts                           # Groq client + token pricing
+│       ├── schemas.ts                        # Zod schemas
+│       └── embeddings.ts                     # resume embedding helpers
 ├── components/
-│ ├── ui/ # shadcn/ui primitives (button, input, badge, sheet, etc.)
-│ ├── kanban-board.tsx # dnd-kit drag-and-drop pipeline board
-│ ├── kanban-wrapper.tsx # dynamic(() => KanbanBoard, { ssr: false }) — fixes hydration
-│ ├── morning-briefing.tsx # daily briefing: overdue, upcoming, stale, funnel stats
-│ ├── follow-up-queue.tsx # dashboard widget: all follow-ups sorted by urgency
-│ ├── analytics-panel.tsx # collapsible wrapper for funnel analytics
-│ ├── funnel-analytics.tsx # recharts: funnel, resume performance, weekly volume
-│ ├── batch-jd-analyzer.tsx # paste up to 3 JDs, analyze + score in parallel
-│ ├── post-interview-debrief.tsx # debrief form + AI coaching insights display
-│ ├── outreach-generator.tsx # cover letters, recruiter / HM outreach, thank-yous
-│ ├── application-detail-client.tsx # client component: follow-up picker, contact linking
-│ ├── follow-up-picker.tsx # 3 / 5 / 7 / 14 day presets + custom date + clear
-│ ├── resume-upload.tsx # upload PDF/DOCX/TXT, manage versions, set active
-│ ├── contact-list.tsx # contact CRUD with warmth badges and interaction log
-│ ├── interaction-log.tsx # timestamped interaction timeline per contact
-│ ├── application-detail.tsx # Sheet side panel (legacy — superseded by /applications/[id])
-│ ├── mock-chat.tsx # streaming mock interview (raw fetch + ReadableStream)
-│ └── usage-dashboard.tsx # token counts and cost breakdown per feature
+│   ├── ui/                                   # shadcn/ui primitives
+│   ├── kanban-board.tsx                      # dnd-kit drag-and-drop pipeline
+│   ├── kanban-wrapper.tsx                    # dynamic import wrapper (fixes hydration)
+│   ├── morning-briefing.tsx                  # overdue, upcoming, stale, funnel stats
+│   ├── follow-up-queue.tsx                   # all follow-ups sorted by urgency
+│   ├── analytics-panel.tsx                   # collapsible wrapper for funnel analytics
+│   ├── funnel-analytics.tsx                  # recharts: funnel, resume, weekly volume
+│   ├── batch-jd-analyzer.tsx                 # paste up to 3 JDs, score in parallel
+│   ├── post-interview-debrief.tsx            # debrief form + AI coaching display
+│   ├── outreach-generator.tsx                # cover letters, recruiter/HM outreach
+│   ├── application-detail-client.tsx         # follow-up picker, contact linking
+│   ├── follow-up-picker.tsx                  # 3/5/7/14 day presets + custom + clear
+│   ├── resume-upload.tsx                     # upload PDF/DOCX/TXT, manage versions
+│   ├── contact-list.tsx                      # contact CRUD + warmth badges
+│   ├── interaction-log.tsx                   # timestamped interaction timeline
+│   ├── application-detail.tsx                # Sheet side panel (legacy)
+│   ├── mock-chat.tsx                         # streaming mock interview
+│   └── usage-dashboard.tsx                   # token counts + cost breakdown
 ├── app/
-│ ├── page.tsx # landing page
-│ ├── layout.tsx # root layout with dark mode + Toaster
-│ ├── (auth)/
-│ │ └── login/
-│ │ └── page.tsx # magic-link sign in
-│ ├── auth/
-│ │ └── callback/
-│ │ └── route.ts # Supabase OAuth code exchange
-│ ├── (app)/ # auth-guarded route group
-│ │ ├── layout.tsx # checks session, redirects to /login if missing
-│ │ ├── dashboard/
-│ │ │ └── page.tsx # kanban + briefing + follow-up queue + analytics + resume + contacts
-│ │ ├── analyze/
-│ │ │ └── page.tsx # single JD analysis + batch mode toggle
-│ │ ├── applications/
-│ │ │ └── [id]/
-│ │ │ └── page.tsx # full application detail: follow-up, contacts, debrief, outreach
-│ │ ├── prep/
-│ │ │ └── [appId]/
-│ │ │ └── page.tsx # mock interview page
-│ │ └── usage/
-│ │ └── page.tsx # LLM cost telemetry dashboard
-│ ├── actions/
-│ │ ├── applications.ts # createApplication, updateStatus, setNextAction
-│ │ ├── resume-actions.ts # uploadResume, getResumes, getActiveResume, setActiveResume, deleteResume
-│ │ ├── contact-actions.ts # getContacts, createContact, getApplicationContacts, linkContactToApplication
-│ │ ├── debrief-actions.ts # getDebriefs, deleteDebrief
-│ │ └── outreach-actions.ts # getOutreach, deleteOutreach
-│ └── api/
-│ ├── analyze/
-│ │ └── route.ts # POST: JD analysis via Groq, returns structured JSON
-│ ├── match/
-│ │ └── route.ts # POST: resume ↔ JD cosine similarity via embed Edge Function
-│ ├── mock/
-│ │ └── route.ts # POST: streaming mock interview (ReadableStream)
-│ ├── briefing/
-│ │ └── route.ts # GET: overdue + upcoming follow-ups, stale apps, funnel stats
-│ ├── analytics/
-│ │ └── route.ts # GET: funnel conversion, time-in-stage, resume performance
-│ ├── jd-fetch/
-│ │ └── route.ts # POST: URL → extracted JD text
-│ ├── debrief/
-│ │ └── route.ts # POST: save debrief + generate AI insights via Groq
-│ └── outreach/
-│ └── route.ts # POST: generate outreach content via Groq, save to DB
+│   ├── page.tsx                              # landing page
+│   ├── layout.tsx                            # root layout + dark mode + Toaster
+│   ├── (auth)/
+│   │   └── login/
+│   │       └── page.tsx                      # magic-link sign in
+│   ├── auth/
+│   │   └── callback/
+│   │       └── route.ts                      # Supabase OAuth code exchange
+│   ├── (app)/                                # auth-guarded route group
+│   │   ├── layout.tsx                        # session check, redirect if missing
+│   │   ├── dashboard/
+│   │   │   └── page.tsx                      # kanban + briefing + analytics
+│   │   ├── analyze/
+│   │   │   └── page.tsx                      # single + batch JD analysis
+│   │   ├── applications/
+│   │   │   └── [id]/
+│   │   │       └── page.tsx                  # detail: follow-up, contacts, outreach
+│   │   ├── prep/
+│   │   │   └── [appId]/
+│   │   │       └── page.tsx                  # mock interview
+│   │   └── usage/
+│   │       └── page.tsx                      # LLM cost telemetry
+│   ├── actions/
+│   │   ├── applications.ts                   # createApplication, updateStatus
+│   │   ├── resume-actions.ts                 # upload, get, setActive, delete
+│   │   ├── contact-actions.ts                # CRUD + link to applications
+│   │   ├── debrief-actions.ts                # getDebriefs, deleteDebrief
+│   │   └── outreach-actions.ts               # getOutreach, deleteOutreach
+│   └── api/
+│       ├── analyze/
+│       │   └── route.ts                      # POST: JD analysis → structured JSON
+│       ├── match/
+│       │   └── route.ts                      # POST: cosine similarity
+│       ├── mock/
+│       │   └── route.ts                      # POST: streaming interview
+│       ├── briefing/
+│       │   └── route.ts                      # GET: overdue, upcoming, stale, stats
+│       ├── analytics/
+│       │   └── route.ts                      # GET: funnel + time-in-stage
+│       ├── jd-fetch/
+│       │   └── route.ts                      # POST: URL → JD text
+│       ├── debrief/
+│       │   └── route.ts                      # POST: save + AI insights
+│       └── outreach/
+│           └── route.ts                      # POST: generate + save outreach
+```
 
 ### RLS
 
