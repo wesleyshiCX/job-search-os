@@ -1,78 +1,98 @@
+// components/morning-briefing.tsx
 "use client";
 
 import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
+  AlertTriangle,
+  Bell,
   Clock,
-  MessageSquare,
   TrendingUp,
-  AlertCircle,
-  Sun,
+  CheckCircle2,
+  XCircle,
+  CalendarClock,
 } from "lucide-react";
 import Link from "next/link";
 
-type Application = {
+interface FollowUpItem {
   id: string;
   company: string;
-  title: string;
+  role_title: string;
   status: string;
-  updated_at: string;
-  follow_up_at: string | null;
-};
+  follow_up_at: string;
+}
 
-type Contact = {
+interface StaleItem {
   id: string;
-  name: string;
-  company: string | null;
-  warmth: string;
-};
+  company: string;
+  role_title: string;
+  status: string;
+  last_activity: string;
+}
 
-type BriefingData = {
-  staleApplications: Application[];
-  upcomingFollowUps: Application[];
-  stats: {
+interface BriefingData {
+  funnel: {
     applied: number;
     responded: number;
     interviewing: number;
+    offers: number;
     rejected: number;
     responseRate: number;
+    total: number;
   };
-  greeting: string;
-};
-
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+  upcomingFollowUps: FollowUpItem[];
+  overdueFollowUps: FollowUpItem[];
+  staleApps: StaleItem[];
+  recentActivity: {
+    newApplications: number;
+  };
 }
 
-function daysSince(dateStr: string): number {
-  const now = new Date();
-  const then = new Date(dateStr);
-  return Math.floor((now.getTime() - then.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-export function MorningBriefing({ contacts }: { contacts: Contact[] }) {
+export function MorningBriefing() {
   const [data, setData] = useState<BriefingData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
         const res = await fetch("/api/briefing");
-        if (!res.ok) throw new Error("Failed");
-        const briefing: BriefingData = await res.json();
-        setData(briefing);
-      } catch {
-        // Graceful degradation — just don't show briefing
-        setData(null);
+        const json = await res.json();
+
+        if (!res.ok) {
+          console.error("[Briefing] API error:", json);
+          setError(json.error ?? "Failed to load briefing");
+          return;
+        }
+
+        // Defensive: ensure all expected fields exist
+        const safe: BriefingData = {
+          funnel: {
+            applied: json.funnel?.applied ?? 0,
+            responded: json.funnel?.responded ?? 0,
+            interviewing: json.funnel?.interviewing ?? 0,
+            offers: json.funnel?.offers ?? 0,
+            rejected: json.funnel?.rejected ?? 0,
+            responseRate: json.funnel?.responseRate ?? 0,
+            total: json.funnel?.total ?? 0,
+          },
+          upcomingFollowUps: Array.isArray(json.upcomingFollowUps)
+            ? json.upcomingFollowUps
+            : [],
+          overdueFollowUps: Array.isArray(json.overdueFollowUps)
+            ? json.overdueFollowUps
+            : [],
+          staleApps: Array.isArray(json.staleApps) ? json.staleApps : [],
+          recentActivity: {
+            newApplications:
+              json.recentActivity?.newApplications ?? 0,
+          },
+        };
+
+        setData(safe);
+      } catch (err) {
+        console.error("[Briefing] Fetch error:", err);
+        setError("Failed to load briefing");
       } finally {
         setLoading(false);
       }
@@ -82,133 +102,207 @@ export function MorningBriefing({ contacts }: { contacts: Contact[] }) {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex items-center gap-2 py-6">
-          <Sun className="h-5 w-5 animate-pulse text-yellow-500" />
-          <p className="text-sm text-muted-foreground">
-            Loading your briefing...
-          </p>
-        </CardContent>
-      </Card>
+      <div className="rounded-lg border p-4 space-y-3 animate-pulse">
+        <div className="h-5 w-40 bg-muted rounded" />
+        <div className="h-4 w-full bg-muted rounded" />
+        <div className="h-4 w-3/4 bg-muted rounded" />
+      </div>
     );
   }
 
-  if (!data) return null;
+  if (error || !data) {
+    return (
+      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+        <p className="text-sm text-muted-foreground">
+          ⚠️ Briefing unavailable{error ? `: ${error}` : ""}
+        </p>
+      </div>
+    );
+  }
 
   const hasAlerts =
-    data.staleApplications.length > 0 ||
-    data.upcomingFollowUps.length > 0;
+    data.overdueFollowUps.length > 0 ||
+    data.upcomingFollowUps.length > 0 ||
+    data.staleApps.length > 0;
 
   return (
-    <Card className={hasAlerts ? "border-primary/30" : ""}>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Sun className="h-5 w-5 text-yellow-500" />
-          {data.greeting}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Stale applications — no response in 7+ days */}
-        {data.staleApplications.length > 0 && (
-          <div className="space-y-2">
-            <p className="flex items-center gap-1.5 text-sm font-medium text-yellow-600">
-              <AlertCircle className="h-4 w-4" />
-              Needs attention
-            </p>
-            {data.staleApplications.map((app) => (
-              <div
-                key={app.id}
-                className="flex items-center justify-between rounded-md border p-2.5"
-              >
-                <div>
-                  <p className="text-sm font-medium">
-                    {app.company} — {app.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    No response in {daysSince(app.updated_at)} days
-                  </p>
-                </div>
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/prep/${app.id}`}>Prep</Link>
-                </Button>
-              </div>
-            ))}
-          </div>
+    <div className="rounded-lg border bg-card p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <Bell className="h-4 w-4 text-primary" />
+        <h2 className="text-sm font-semibold">Morning Briefing</h2>
+        {hasAlerts && (
+          <Badge variant="destructive" className="text-[10px]">
+            {data.overdueFollowUps.length +
+              data.upcomingFollowUps.length +
+              data.staleApps.length}{" "}
+            action{data.overdueFollowUps.length +
+              data.upcomingFollowUps.length +
+              data.staleApps.length !== 1
+              ? "s"
+              : ""}
+          </Badge>
         )}
+      </div>
 
-        {/* Scheduled follow-ups */}
-        {data.upcomingFollowUps.length > 0 && (
-          <div className="space-y-2">
-            <p className="flex items-center gap-1.5 text-sm font-medium text-blue-600">
-              <Clock className="h-4 w-4" />
-              Follow-up reminders
-            </p>
-            {data.upcomingFollowUps.map((app) => (
-              <div
-                key={app.id}
-                className="flex items-center justify-between rounded-md border p-2.5"
-              >
-                <div>
-                  <p className="text-sm font-medium">
-                    {app.company} — {app.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Follow up by{" "}
-                    {new Date(app.follow_up_at!).toLocaleDateString()}
-                  </p>
-                </div>
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/prep/${app.id}`}>Review</Link>
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Quick stats */}
-        <div className="grid grid-cols-5 gap-3 rounded-lg bg-muted/50 p-3">
-          <Stat label="Applied" value={data.stats.applied} />
-          <Stat label="Responded" value={data.stats.responded} />
-          <Stat label="Interviewing" value={data.stats.interviewing} />
-          <Stat label="Rejected" value={data.stats.rejected} />
-          <Stat
-            label="Response Rate"
-            value={`${data.stats.responseRate}%`}
-            icon={
-              data.stats.responseRate >= 40 ? (
-                <TrendingUp className="h-3 w-3 text-green-500" />
-              ) : null
-            }
-          />
-        </div>
-
-        {/* No alerts state */}
-        {!hasAlerts && (
-          <p className="text-sm text-muted-foreground">
-            Nothing needs your attention right now. Keep applying! 🚀
+      {/* Funnel stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-md bg-muted/50 p-2.5 text-center">
+          <p className="text-lg font-semibold">{data.funnel.applied}</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+            Applied
           </p>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+        <div className="rounded-md bg-muted/50 p-2.5 text-center">
+          <p className="text-lg font-semibold">
+            {data.funnel.responded}
+          </p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+            Responded
+          </p>
+        </div>
+        <div className="rounded-md bg-muted/50 p-2.5 text-center">
+          <p className="text-lg font-semibold">
+            {data.funnel.interviewing}
+          </p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+            Interviewing
+          </p>
+        </div>
+        <div className="rounded-md bg-muted/50 p-2.5 text-center">
+          <p className="text-lg font-semibold">
+            {data.funnel.responseRate}%
+          </p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+            Response Rate
+          </p>
+        </div>
+      </div>
+
+      {/* Overdue follow-ups */}
+      {data.overdueFollowUps.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 text-red-400" />
+            <span className="text-xs font-medium text-red-400">
+              Overdue Follow-ups
+            </span>
+          </div>
+          {data.overdueFollowUps.map((item) => (
+            <Link
+              key={item.id}
+              href={`/applications/${item.id}`}
+              className="flex items-center justify-between rounded-md border border-red-400/20 bg-red-400/5 p-2 hover:bg-red-400/10 transition-colors"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {item.role_title}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {item.company}
+                </p>
+              </div>
+              <span className="text-xs text-red-400 shrink-0 ml-2">
+                {formatRelativeDate(item.follow_up_at)}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* Upcoming follow-ups */}
+      {data.upcomingFollowUps.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <CalendarClock className="h-3.5 w-3.5 text-amber-400" />
+            <span className="text-xs font-medium text-amber-400">
+              Due Soon (3 days)
+            </span>
+          </div>
+          {data.upcomingFollowUps.map((item) => (
+            <Link
+              key={item.id}
+              href={`/applications/${item.id}`}
+              className="flex items-center justify-between rounded-md border border-amber-400/20 bg-amber-400/5 p-2 hover:bg-amber-400/10 transition-colors"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {item.role_title}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {item.company}
+                </p>
+              </div>
+              <span className="text-xs text-amber-400 shrink-0 ml-2">
+                {formatRelativeDate(item.follow_up_at)}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* Stale applications */}
+      {data.staleApps.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground">
+              Stale (7+ days, no activity)
+            </span>
+          </div>
+          {data.staleApps.map((item) => (
+            <Link
+              key={item.id}
+              href={`/applications/${item.id}`}
+              className="flex items-center justify-between rounded-md border p-2 hover:bg-muted/30 transition-colors"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {item.role_title}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {item.company}
+                </p>
+              </div>
+              <Badge variant="outline" className="text-[10px] shrink-0 ml-2">
+                {item.status}
+              </Badge>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* No alerts */}
+      {!hasAlerts && (
+        <div className="flex items-center gap-2 text-muted-foreground py-2">
+          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          <p className="text-sm">All caught up. No urgent actions today.</p>
+        </div>
+      )}
+
+      {/* Recent activity summary */}
+      {data.recentActivity.newApplications > 0 && (
+        <div className="flex items-center gap-2 text-muted-foreground pt-1 border-t">
+          <TrendingUp className="h-3.5 w-3.5" />
+          <p className="text-xs">
+            {data.recentActivity.newApplications} new application
+            {data.recentActivity.newApplications !== 1 ? "s" : ""} in the
+            last 7 days
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 
-function Stat({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: number | string;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <div className="text-center">
-      <p className="text-lg font-semibold">
-        {value}
-        {icon}
-      </p>
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-    </div>
-  );
+function formatRelativeDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < -1) return `${Math.abs(diffDays)}d overdue`;
+  if (diffDays === -1) return "1d overdue";
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Tomorrow";
+  return `In ${diffDays}d`;
 }

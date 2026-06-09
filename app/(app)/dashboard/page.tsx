@@ -4,10 +4,10 @@ import { KanbanBoard } from "@/components/kanban-board";
 import { MorningBriefing } from "@/components/morning-briefing";
 import { ResumeUpload } from "@/components/resume-upload";
 import { ContactList } from "@/components/contact-list";
+import { FollowUpQueue } from "@/components/follow-up-queue";
 import { getResumes, getActiveResume } from "@/app/actions/resume-actions";
 import { getContacts } from "@/app/actions/contact-actions";
 import { AnalyticsPanel } from "@/components/analytics-panel";
-import { KanbanWrapper } from "@/components/kanban-wrapper";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -28,6 +28,9 @@ export default async function DashboardPage() {
       {/* Morning briefing — full width */}
       <MorningBriefing />
 
+      {/* Follow-up queue — full width */}
+      <FollowUpQueue applications={apps ?? []} />
+
       {/* Analytics Panel — full width */}
       <AnalyticsPanel />
 
@@ -39,12 +42,12 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* Kanban board — full width, internal horizontal scroll for columns */}
+      {/* Kanban board */}
       <div className="min-w-0 overflow-x-auto -mx-6 px-6 pb-2">
         <KanbanBoard initialApps={apps ?? []} />
       </div>
 
-      {/* Resume + Contacts below the board — side by side on large, stacked on mobile */}
+      {/* Resume + Contacts */}
       <div className="grid gap-6 sm:grid-cols-2">
         <ResumeUpload
           resumes={resumes.map((r: any) => ({

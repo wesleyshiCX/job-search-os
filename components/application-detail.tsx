@@ -110,40 +110,46 @@ export function ApplicationDetail({
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
-          {/* Follow-up date */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5">
-              <CalendarClock className="h-4 w-4" />
-              Follow up by
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                type="date"
-                value={followUpDate}
-                onChange={(e) => setFollowUpDate(e.target.value)}
-              />
-              <Button
-                size="sm"
-                onClick={async () => {
-                  const supabase = (
-                    await import("@/lib/supabase/client")
-                  ).createClient();
-                  const { error } = await supabase
-                    .from("applications")
-                    .update({
-                      follow_up_at: followUpDate
-                        ? new Date(followUpDate).toISOString()
-                        : null,
-                    })
-                    .eq("id", application.id);
-                  if (!error) toast.success("Follow-up date saved");
-                  else toast.error("Failed to save");
-                }}
-              >
-                Save
-              </Button>
-            </div>
-          </div>
+  {/* Follow-up date — ADDED RELATIVE POSITIONING & Z-INDEX */}
+  <div className="space-y-2 relative z-50">
+    <Label className="flex items-center gap-1.5">
+      <CalendarClock className="h-4 w-4" />
+      Follow up by
+    </Label>
+    <div className="flex gap-2">
+      <Input
+        type="date"
+        className="cursor-pointer" // Ensures the native picker is accessible
+        value={followUpDate}
+        onChange={(e) => setFollowUpDate(e.target.value)}
+      />
+      <Button
+        size="sm"
+        className="relative z-50 shrink-0" // Ensure button is above everything
+        onClick={async () => {
+          // Add basic validation
+          if (!followUpDate) return toast.error("Select a date first");
+          
+          const supabase = (
+            await import("@/lib/supabase/client")
+          ).createClient();
+          
+          const { error } = await supabase
+            .from("applications")
+            .update({
+              follow_up_at: new Date(followUpDate).toISOString(),
+            })
+            .eq("id", application.id);
+            
+          if (!error) toast.success("Follow-up date saved");
+          else toast.error("Failed to save");
+        }}
+      >
+        Save
+      </Button>
+    </div>
+  </div>
+
 
           {/* Source URL */}
           {application.source_url && (

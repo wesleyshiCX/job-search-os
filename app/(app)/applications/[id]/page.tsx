@@ -2,12 +2,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { PostInterviewDebrief } from "@/components/post-interview-debrief";
 import { OutreachGenerator } from "@/components/outreach-generator";
+import { FollowUpPicker } from "@/components/follow-up-picker";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
-  CalendarClock,
   Link2,
   Mic,
 } from "lucide-react";
@@ -100,18 +100,11 @@ export default async function ApplicationPage({
         </Link>
       </div>
 
-      {/* Follow-up date */}
-      <div className="space-y-1">
-        <Label className="flex items-center gap-1.5">
-          <CalendarClock className="h-4 w-4" />
-          Follow up by
-        </Label>
-        <p className="text-sm">
-          {app.follow_up_at
-            ? new Date(app.follow_up_at).toLocaleDateString()
-            : "No follow-up set"}
-        </p>
-      </div>
+      {/* Follow-up picker */}
+      <FollowUpPicker
+        applicationId={id}
+        currentDate={app.next_action_at ?? app.follow_up_at ?? null}
+      />
 
       {/* Source URL */}
       {app.source_url && (
